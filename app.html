@@ -120,7 +120,10 @@
 
 			float findNoise(vec2 P)
 			{
-				return 30. * cnoise(10.0 * P);
+				float fs = cnoise(4.0*P);
+				fs += cnoise(8.0*P)/2.0;
+				
+				return 100.0 * fs;
 			}
 
 			void main()
@@ -180,6 +183,7 @@
 		<script>
 			//Start clock
 			var startTime = Date.now();
+	
 
 			//Scene + Camera
 			var scene = new THREE.Scene();
@@ -191,14 +195,15 @@
 			renderer.setSize(window.innerWidth, window.innerHeight);
 			document.body.appendChild(renderer.domElement);
 
-			//Create cube geometry and add to scene with custom shaded material attached to it
-			var geoPlane = new THREE.PlaneBufferGeometry(2000, 2000, 100, 100);
-			var geoSphere = new THREE.SphereGeometry(2, 32, 32);
+			//Geometries
+			var geoPlane = new THREE.PlaneBufferGeometry(2000, 2000, 200, 200);
+			var geoSphere = new THREE.SphereGeometry(10, 32, 32);
+			var geoSkybox = new THREE.BoxGeometry(10000, 10000, 10000);
 
 			//Fog
-			scene.fog = new THREE.Fog('red', 300.0, 2000.0);
+			scene.fog = new THREE.Fog('white', 500.0, 1000.0);
 
-			//Custom shaded material
+			//Materials
 			var uniforms = THREE.UniformsUtils.merge([
 				THREE.UniformsLib['lights'],
 				{ 
@@ -217,7 +222,21 @@
 				lights: true,
 				fog: true,
 			});
-			var mat = new THREE.MeshBasicMaterial(0xffffff);
+			var sphereMat = new THREE.MeshBasicMaterial(0xffffff);
+			var matArray = [];
+			var skyboxText = [
+				new THREE.MeshBasicMaterial({map: new THREE.TextureLoader().load('green_ft.tga'), side: THREE.DoubleSide}),
+				new THREE.MeshBasicMaterial({map: new THREE.TextureLoader().load('green_bk.tga'), side: THREE.DoubleSide}),
+				new THREE.MeshBasicMaterial({map: new THREE.TextureLoader().load('green_up.tga'), side: THREE.DoubleSide}),
+				new THREE.MeshBasicMaterial({map: new THREE.TextureLoader().load('green_dn.tga'), side: THREE.DoubleSide}),
+				new THREE.MeshBasicMaterial({map: new THREE.TextureLoader().load('green_rt.tga'), side: THREE.DoubleSide}),
+				new THREE.MeshBasicMaterial({map: new THREE.TextureLoader().load('green_lf.tga'), side: THREE.DoubleSide}),
+			];
+			matArray.push(skyboxText);
+			
+			//Skybox
+			var skybox = new THREE.Mesh(geoSkybox, matArray);
+			scene.add(skybox);
 
 			//Plane
 			var plane = new THREE.Mesh(geoPlane, shaderMat);
@@ -225,13 +244,13 @@
 			scene.add(plane);
 
 			//Sphere
-			var sphere = new THREE.Mesh(geoSphere, mat);
-			sphere.position.set(0.0, 50, 0.0);
+			var sphere = new THREE.Mesh(geoSphere, sphereMat);
+			sphere.position.set(0.0, 500.0, 0.0);
 			scene.add(sphere);
 
 			//Lights
 			var light = new THREE.PointLight(0x00ff00, 0.5, 20);
-			light.position.set(0.0, 50, 0.0);
+			light.position.set(0.0, 500.0, 0.0);
 			scene.add(light);
 
 			//Set orbit controls
@@ -243,7 +262,7 @@
 			//ground.wrapT = THREE.RepeatWrapping;
 
 			//Set camera position
-			camera.position.set(0, 100, 100);
+			camera.position.set(0, 200, 100);
 			controls.update();
 			
 			//Rendering loop
