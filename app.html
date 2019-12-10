@@ -10,9 +10,10 @@
 	<body>
 		<script src="js/three.js"></script>
 		<script src="js/OrbitControls.js"></script>
-		
-
+		<script src="js/grassShaders.js"></script>
+		<script src="js/planeShaders.js"></script>
 		<script type="x-shader/x-vertex" id="vertexShader">
+			/* PLANE SHADERS
 			vec4 mod289(vec4 x)
 			{
 			  return x - floor(x * (1.0 / 289.0)) * 289.0;
@@ -177,17 +178,23 @@
 		          float fogFactor = smoothstep(fogNear, fogFar, depth);
 		          gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, fogFactor);
 		      #endif
-			}
+			}*/
 		</script>
 		
 		<script>
+			//Include statistics
+			(function(){var script=document.createElement('script');
+			script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);
+			requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};
+			script.src='http://mrdoob.github.io/stats.js/build/stats.min.js';document.head.appendChild(script);})()
+			
 			//Start clock
 			var startTime = Date.now();
 	
 
 			//Scene + Camera
 			var scene = new THREE.Scene();
-			var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 1000);
+			var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 10000);
 
 			//Renderer
 			var renderer = new THREE.WebGLRenderer();
@@ -199,50 +206,105 @@
 			var geoPlane = new THREE.PlaneBufferGeometry(2000, 2000, 200, 200);
 			var geoSphere = new THREE.SphereGeometry(10, 32, 32);
 			var geoSkybox = new THREE.BoxGeometry(10000, 10000, 10000);
+			
+			//Instances of grass
+			var offsets = new Float32Array(50*50*3);
+			var rotations = new Float32Array(50*50);
+			for(i = 0; i < 50*50; ++i){
+				//Distribute the blades of grass "evenly" across the plane
+				offsets[i*3] = Math.random() * 2000 - 1000;
+				offsets[i*3+1] = 5;
+				offsets[i*3+2] = Math.random() * 2000 - 1000;
+				rotations[i] = Math.random() * 2 * Math.PI;
 
+			}
+			
+			//Experiment
+ 			var geoGrass = new THREE.InstancedBufferGeometry().copy(new THREE.PlaneBufferGeometry(5, 5, 1));
+			geoGrass.setAttribute("grassPos", new THREE.InstancedBufferAttribute(offsets, 3, true));
+			geoGrass.setAttribute("grassRot", new THREE.InstancedBufferAttribute(rotations, 1, true));
+			
+			var grass; var skybox;
+			var loadingManager = new THREE.LoadingManager( function () {
+
+					grass.visible = true;
+					console.log("Texture loaded.")
+				} );
+			var textureLoader = new THREE.TextureLoader( loadingManager );
+
+
+			var grassText = textureLoader.load( "./images/grass_sprite.png" );
+
+			grassText.wrapS = THREE.ClampToEdgeWrapping; grassText.wrapT = THREE.ClampToEdgeWrapping;
+			console.log(grassText);
+ 			/*Keep
+			var geoGrass = new THREE.InstancedBufferGeometry().copy(new THREE.BoxBufferGeometry(0.5, 10, 0.5));
+			geoGrass.addAttribute("grassPos", new THREE.InstancedBufferAttribute(offsets, 3, 1));
+			*/
+			
 			//Fog
-			scene.fog = new THREE.Fog('white', 500.0, 1000.0);
-
+			scene.fog = new THREE.Fog('grey', 500.0, 1000.0);
+			
 			//Materials
 			var uniforms = THREE.UniformsUtils.merge([
 				THREE.UniformsLib['lights'],
 				{ 
 					diffuse: { type: 'c', value: new THREE.Color(0xffffff) },
-					time: { type: "f", value: 1.0 },
-					fogColor:    { type: "c", value: scene.fog.color },
-				    fogNear:     { type: "f", value: scene.fog.near },
-				    fogFar:      { type: "f", value: scene.fog.far },
+					time:    { type: "f", value: 1.0 },
+					fogColor:{ type: "c", value: scene.fog.color },
+				    fogNear: { type: "f", value: scene.fog.near },
+				    fogFar:  { type: "f", value: scene.fog.far },
+				    texture: { type: "t", value: null },
 				}
 			]);
 
+
 			var shaderMat = new THREE.ShaderMaterial({
 				uniforms: uniforms,
-				vertexShader: document.getElementById( 'vertexShader' ).textContent,
-				fragmentShader: document.getElementById( 'fragmentShader' ).textContent,
+				vertexShader: vertexShaderPlane,//document.getElementById( 'vertexShader' ).textContent,
+				fragmentShader: fragmentShaderPlane,//document.getElementById( 'fragmentShader' ).textContent,
 				lights: true,
 				fog: true,
+				transparent: true,
 			});
-			var sphereMat = new THREE.MeshBasicMaterial(0xffffff);
+			var sphereMat = new THREE.MeshBasicMaterial('white');
 			var matArray = [];
 			var skyboxText = [
-				new THREE.MeshBasicMaterial({map: new THREE.TextureLoader().load('green_ft.tga'), side: THREE.DoubleSide}),
-				new THREE.MeshBasicMaterial({map: new THREE.TextureLoader().load('green_bk.tga'), side: THREE.DoubleSide}),
-				new THREE.MeshBasicMaterial({map: new THREE.TextureLoader().load('green_up.tga'), side: THREE.DoubleSide}),
-				new THREE.MeshBasicMaterial({map: new THREE.TextureLoader().load('green_dn.tga'), side: THREE.DoubleSide}),
-				new THREE.MeshBasicMaterial({map: new THREE.TextureLoader().load('green_rt.tga'), side: THREE.DoubleSide}),
-				new THREE.MeshBasicMaterial({map: new THREE.TextureLoader().load('green_lf.tga'), side: THREE.DoubleSide}),
+				new THREE.MeshBasicMaterial({map: textureLoader.load('images/green_ft.tga'), side: THREE.DoubleSide}),
+				new THREE.MeshBasicMaterial({map: textureLoader.load('images/green_bk.tga'), side: THREE.DoubleSide}),
+				new THREE.MeshBasicMaterial({map: textureLoader.load('images/green_up.tga'), side: THREE.DoubleSide}),
+				new THREE.MeshBasicMaterial({map: textureLoader.load('images/green_dn.tga'), side: THREE.DoubleSide}),
+				new THREE.MeshBasicMaterial({map: textureLoader.load('images/green_rt.tga'), side: THREE.DoubleSide}),
+				new THREE.MeshBasicMaterial({map: textureLoader.load('images/green_lf.tga'), side: THREE.DoubleSide}),
 			];
 			matArray.push(skyboxText);
 			
+			var grassMat = new THREE.ShaderMaterial({
+				uniforms: uniforms,
+				vertexShader: vertexShaderGrass,
+				fragmentShader: fragmentShaderGrass,
+				side: THREE.DoubleSide,
+				lights: true,
+				fog: true,
+				transparent: true,
+			});
+			grassMat.uniforms.texture = grassText
+			grassMat.texture = grassText
+
 			//Skybox
-			var skybox = new THREE.Mesh(geoSkybox, matArray);
+			skybox = new THREE.Mesh(geoSkybox, matArray);
 			scene.add(skybox);
+
+			//Grass
+			grass = new THREE.Mesh(geoGrass, grassMat);
+			grass.visible = false;
 
 			//Plane
 			var plane = new THREE.Mesh(geoPlane, shaderMat);
 			plane.rotation.x -= Math.PI/2;
+			scene.add(grass);
 			scene.add(plane);
-
+			
 			//Sphere
 			var sphere = new THREE.Mesh(geoSphere, sphereMat);
 			sphere.position.set(0.0, 500.0, 0.0);
@@ -253,16 +315,13 @@
 			light.position.set(0.0, 500.0, 0.0);
 			scene.add(light);
 
-			//Set orbit controls
+			//Controls
 			var controls = new THREE.OrbitControls(camera, renderer.domElement);
-
-			//Texture
-			//var ground = new THREE.Texture
-			//ground.wrapS = THREE.RepeatWrapping;
-			//ground.wrapT = THREE.RepeatWrapping;
+			controls.maxPolarAngle = Math.PI/3.0; controls.minPolarAngle = Math.PI/3.0;
+			controls.enablePan = false; controls.enableZoom = false;
 
 			//Set camera position
-			camera.position.set(0, 200, 100);
+			camera.position.set(0, 300, 300);
 			controls.update();
 			
 			//Rendering loop
@@ -270,7 +329,6 @@
 				var elapsedMilliseconds = Date.now() - startTime;
 			    var elapsedSeconds = elapsedMilliseconds / 1000.0;
 			    uniforms.time.value = 60.0 * elapsedSeconds;
-
 				requestAnimationFrame(animate);
 				controls.update();
 				renderer.render(scene, camera);
