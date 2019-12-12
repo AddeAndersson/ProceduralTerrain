@@ -39,9 +39,10 @@
 			var geoSkybox = new THREE.BoxGeometry(5000, 5000, 5000);
 			
 			//Instances of grass
-			var offsets = new Float32Array(50*50*3);
-			var rotations = new Float32Array(50*50);
-			for(i = 0; i < 50*50; ++i){
+			var nGrass = 500;
+			var offsets = new Float32Array(nGrass*nGrass*3);
+			var rotations = new Float32Array(nGrass*nGrass);
+			for(i = 0; i < nGrass*nGrass; ++i){
 				//Distribute the blades of grass "evenly" across the plane
 				offsets[i*3] = Math.random() * 2000 - 1000;
 				offsets[i*3+1] = 5;
@@ -50,7 +51,7 @@
 			}
 			
 			//Experiment
- 			var geoGrass = new THREE.InstancedBufferGeometry().copy(new THREE.PlaneBufferGeometry(1, 5, 1));
+ 			var geoGrass = new THREE.InstancedBufferGeometry().copy(new THREE.PlaneBufferGeometry(2, 8, 1));
 			geoGrass.setAttribute("grassPos", new THREE.InstancedBufferAttribute(offsets, 3, true));
 			geoGrass.setAttribute("grassRot", new THREE.InstancedBufferAttribute(rotations, 1, true));
  			
