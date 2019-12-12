@@ -29,6 +29,7 @@
 
 			//Renderer
 			var renderer = new THREE.WebGLRenderer();
+			renderer.setClearColor('grey');
 			
 			renderer.setSize(window.innerWidth, window.innerHeight);
 			document.body.appendChild(renderer.domElement);
@@ -39,10 +40,10 @@
 			var geoSkybox = new THREE.BoxGeometry(5000, 5000, 5000);
 			
 			//Instances of grass
-			var nGrass = 500;
-			var offsets = new Float32Array(nGrass*nGrass*3);
-			var rotations = new Float32Array(nGrass*nGrass);
-			for(i = 0; i < nGrass*nGrass; ++i){
+			var nGrass = 200000;
+			var offsets = new Float32Array(nGrass*3);
+			var rotations = new Float32Array(nGrass);
+			for(i = 0; i < nGrass; ++i){
 				//Distribute the blades of grass "evenly" across the plane
 				offsets[i*3] = Math.random() * 2000 - 1000;
 				offsets[i*3+1] = 5;
@@ -51,7 +52,45 @@
 			}
 			
 			//Experiment
- 			var geoGrass = new THREE.InstancedBufferGeometry().copy(new THREE.PlaneBufferGeometry(2, 8, 1));
+			//Build vertices on shape of grass
+			var vertices = new Float32Array( [
+				  1.0, 0.0,  0.0, //T1
+				  0.7, 2.0,  0.0,
+				  0.0, 0.0,  0.0,
+
+				  0.7, 2.0,  0.0, //T2
+				  0.0, 3.0,  0.0,
+				  0.0, 0.0,  0.0,
+
+				  0.7, 2.0,  0.0, //T3
+				  0.5, 5.0,  0.0,
+				  0.0, 3.0,  0.0,
+
+				  0.9, 4.0,  0.0, //T4
+				  0.5, 5.0,  0.0,
+				  0.7, 2.0,  0.0,
+
+				  0.9, 4.0,  0.0, //T5
+				  0.8, 6.0,  0.0,
+				  0.5, 5.0,  0.0,
+
+				  0.0, 0.0,  0.0, //T6
+				  0.0, 3.0,  0.0,
+				 -0.3, 2.0,  0.0,
+
+				 -0.3, 2.0,  0.0, //T7
+				  0.0, 3.0,  0.0,
+				 -0.1, 4.0,  0.0,
+
+				 -0.3, 2.0,  0.0, //T8
+				 -0.1, 4.0,  0.0,
+				 -0.5, 5.0,  0.0,
+			] );
+
+ 			//var geoGrass = new THREE.InstancedBufferGeometry().copy(new THREE.PlaneBufferGeometry(2, 8, 1));
+ 			var singleGrass = new THREE.BufferGeometry();
+ 			singleGrass.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+ 			var geoGrass = new THREE.InstancedBufferGeometry().copy(singleGrass);
 			geoGrass.setAttribute("grassPos", new THREE.InstancedBufferAttribute(offsets, 3, true));
 			geoGrass.setAttribute("grassRot", new THREE.InstancedBufferAttribute(rotations, 1, true));
  			
@@ -75,7 +114,7 @@
 				undefined,
 				// onError callback
 				function ( err ) {
-					console.error( 'An error happened.' );
+					console.error('An error happened.');
 				}
 			);
 
@@ -85,7 +124,7 @@
 			*/
 			
 			//Fog
-			scene.fog = new THREE.Fog('grey', 500.0, 1000.0);
+			scene.fog = new THREE.Fog('grey', 0.0, 1000.0);
 			
 			//Materials
 			var uniforms = THREE.UniformsUtils.merge([
@@ -148,7 +187,7 @@
 			scene.add(sphere);
 
 			//Lights
-			var light = new THREE.PointLight(0x00ff00, 0.5, 20);
+			var light = new THREE.PointLight(0x7B7900, 0.5, 20);
 			light.position.set(0.0, 500.0, 0.0);
 			scene.add(light);
 
