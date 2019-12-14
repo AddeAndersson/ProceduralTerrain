@@ -130,6 +130,8 @@ var vertexShaderGrass = [
 "attribute vec3 grassPos;",
 "attribute float grassRot;",
 "varying vec3 vPos;",
+"varying vec3 pos;",
+"uniform float vel;",
 "",
 "void main() {",
 "	vUv = uv;",
@@ -139,7 +141,7 @@ var vertexShaderGrass = [
 "	comb = comb + grassPos;",
 "",
 "", //cTime will move the grass along x
-"	float cTime = mod(time, 1000.0);",
+"	float cTime = mod(vel * 2.0 * time, 1000.0);",
 "",  //Move grass along negative x
 "	comb.x -= 2.0 * cTime;",
 "",
@@ -150,14 +152,15 @@ var vertexShaderGrass = [
 "",
 "",	//Find corresponding uv coordinate for plane at grass's position
 "",	//in order to find the displacement
-"	vec2 mUV = findUV(vec2(comb.x, comb.z)) + vec2(0.001 * time, 0.0);",
+"	vec2 mUV = findUV(vec2(comb.x, comb.z)) + vec2(vel * 0.002 * time, 0.0);",
 "	float n = findNoise(mUV);",
 "",
 "",	//Add displacement height and flip sign of z(?)
 "	dispPos = vec3(comb.x, comb.y + n, -comb.z);",
 "",
 "	vec4 modelViewPosition = modelViewMatrix * vec4( dispPos, 1.0 );",
-"	vPos = position;//modelViewPosition.xyz;",
+"   pos = position;",
+"	vPos = modelViewPosition.xyz;",
 "	gl_Position = projectionMatrix * modelViewPosition;",
 "",
 "}"
@@ -169,19 +172,35 @@ var fragmentShaderGrass = [
 "uniform vec3 fogColor;",
 "uniform float fogNear;",
 "uniform float fogFar;",
+"uniform vec3 diffuse;",
 "varying vec3 vPos;",
+"varying vec3 pos;",
 "varying vec2 vUv;",
 "uniform sampler2D texture;",
+"",
+"struct PointLight {",
+"	vec3 position;",
+"	vec3 color;",
+"};",
+"",
+"uniform PointLight pointLights[ NUM_POINT_LIGHTS ];",
 "",
 "void main()",
 "{",
 "",
-"	vec3 ltGreen = vec3( 0.4, 0.8, 0.4);", //Light green
+"	vec3 ltGreen = vec3( 0.2, 0.5, 0.2);", //Light green
 "	vec3 dkGreen = vec3(0.12, 0.38, 0.12);", //Dark green
-"	gl_FragColor.rgb = mix(dkGreen, ltGreen, vPos.y/6.0);", //The closer the ground the darker the color
+"	gl_FragColor.rgb = mix(dkGreen, ltGreen, pos.y/12.0);", //The closer the ground the darker the color
 "	float dist = distance(vPos, vec3(0.0, 0.0, 0.0));",
-"	float opacity = clamp(dist/1000.0, 0.0, 1.0);",
-"	gl_FragColor.a = opacity;",
+"	//float opacity = clamp(dist/1000.0, 0.0, 1.0);",
+"	//gl_FragColor.a = opacity;",
+"", //Light contribution
+"	for(int i = 0; i < NUM_POINT_LIGHTS; i++)",
+"	{",
+"		vec3 lightDirection = normalize(pointLights[i].position - vPos);",
+"		gl_FragColor.rgb += clamp(dot(lightDirection, vec3(0.0, 1.0, 0.0)), 0.0, 1.0) * pointLights[i].color;",
+"	}",
+"",
 "",
 "", //Fog
 "   #ifdef USE_FOG",
