@@ -13,6 +13,8 @@
 		<script src="js/OrbitControls.js"></script>
 		<script src="js/grassShaders.js"></script>
 		<script src="js/planeShaders.js"></script>
+		<script src="js/lightningShaders.js"></script>
+		<script src="js/Segment.js"></script>
 
 		<script>
 			//Include statistics
@@ -52,7 +54,6 @@
 				rotations[i] = Math.random() * 2 * Math.PI;
 			}
 			
-			//Experiment
 			//Build vertices on shape of grass
 			var vertices = new Float32Array( [
 				  1.0, 0.0,  0.0, //T1
@@ -105,6 +106,7 @@
 				{ 
 					diffuse: { type: 'c', value: new THREE.Color(0xffffff) },
 					time:    { type: "f", value: 1.0 },
+					timer:   { type: "f", value: 0.0 },
 					vel:     { type: "f", value: 0.5 },
 					fogColor:{ type: "c", value: scene.fog.color },
 				    fogNear: { type: "f", value: scene.fog.near },
@@ -132,6 +134,61 @@
 				fog: true,
 			});
 
+			//Lightning
+			var lightningMat = new THREE.ShaderMaterial({
+				uniforms: uniforms,
+				vertexShader: vertexShaderLightning,
+				fragmentShader: fragmentShaderLightning,
+				transparent: true,
+			});
+
+			function createLightning(x = 0, z = 0){
+				//Create array
+				var arr = [];
+				var off = 100;
+				//Push first segment
+				arr.push(new THREE.Vector3(x, 600, z));
+				arr.push(new THREE.Vector3(x, 100, z));
+				//Number of iterations
+				for(i = 0; i < 4; ++i){
+					//For each segments that existed
+					//from the beginning of the loop
+					for(n = 0; n < Math.pow(2, i); ++n){
+						//Get first segment and remove it
+						var start = arr.shift();
+						var end = arr.shift();
+						//Find middle point
+						var mid = new THREE.Vector3((start.x + end.x)/ 2, (start.y + end.y)/ 2, (start.z + end.z)/ 2);
+						//Offset middle point
+						var offVec = new THREE.Vector3(2 * Math.random() - 1, 0, 2 * Math.random() - 1);
+						offVec.multiplyScalar(off);
+						mid.add(offVec);
+						//Add split
+						var split = new THREE.Vector3();
+						split.subVectors(mid, start);
+						split.multiplyScalar(0.4);
+						split.add(mid);
+
+						//Add new segments
+						arr.push(start); arr.push(mid);
+						arr.push(mid); arr.push(end);
+						arr.push(mid); arr.push(split);
+					}
+					//Halve next offset
+					off /= 2;
+				}
+				//Copy array to geometry (OPTIMIZABLE)
+				var lightningGeo = new THREE.Geometry();
+				for(i = 0; i < arr.length; ++i){
+					lightningGeo.vertices.push(arr[i]);
+				}
+				//return new THREE.LineSegments(lightningGeo, lightningMat);
+				return lightningGeo;
+			}
+			
+			var lightning = new THREE.LineSegments(createLightning(0, 0), lightningMat);
+			scene.add(lightning);
+
 			//Grass
 			var grass = new THREE.Mesh(geoGrass, grassMat);
 			scene.add(grass);
@@ -157,35 +214,58 @@
 			controls.enablePan = false; controls.enableZoom = false;
 
 			//Set camera position
-			camera.position.set(0, 300, 300);
+			camera.position.set(0, 300, 500);
 			controls.update();
 
+			var fr = 0.5;
 			var parameters = {
 				velocity: 0.5,
+				frequency: 0.5,
 				reset: function() {reset()},
 			};
 
 			function reset(){
 				parameters.velocity = 0.5;
+				parameters.frequency = 0.5;
 				uniforms.vel.value = 0.5;
+				fr = 0.5;
 			}
 
 			var gui = new dat.GUI();
 			var options = gui.addFolder('Options');
 			gui.add(parameters, 'reset').name("Reset");
 			var velo = options.add(parameters, 'velocity').min(0.0).max(1.0).step(0.1).listen();
+			var freq = options.add(parameters, 'frequency').min(0.1).max(1.0).step(0.1).listen();
 			options.open();
 
 			velo.onChange(function(value) {
 				uniforms.vel.value = value;
 				console.log(uniforms.vel.value);
 			});
-						
+
+			freq.onChange(function(value) {
+				fr = value;
+				console.log(fr);
+			});
+			
+			//Used to track time for the lightning display
+			var delta = 0;
+
 			//Rendering loop
 			var animate = function () {
 				var elapsedMilliseconds = Date.now() - startTime;
 			    var elapsedSeconds = elapsedMilliseconds / 1000.0;
 			    uniforms.time.value = 60.0 * elapsedSeconds;
+			    uniforms.timer.value = uniforms.time.value - delta;
+			    
+			    //Bring the thunder
+			    if(uniforms.time.value % (50/fr) < 1){
+			    	uniforms.timer.value = 0;
+			    	delta = uniforms.time.value;
+			    	lightning.geometry.dispose();
+			    	lightning.geometry = createLightning(2000 * Math.random() - 1000, 2000 * Math.random() - 1000);
+			    }
+
 				requestAnimationFrame(animate);
 				controls.update();
 				renderer.render(scene, camera);
