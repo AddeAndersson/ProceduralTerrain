@@ -14,7 +14,7 @@
 		<script src="js/grassShaders.js"></script>
 		<script src="js/planeShaders.js"></script>
 		<script src="js/lightningShaders.js"></script>
-		<script src="js/Segment.js"></script>
+		<script src="js/poisson-disc.js"></script>
 
 		<script>
 			//Include statistics
@@ -25,35 +25,8 @@
 			
 			//Start clock
 			var startTime = Date.now();
-	
-			//Scene + Camera
-			var scene = new THREE.Scene();
-			var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 10000);
 
-			//Renderer
-			var renderer = new THREE.WebGLRenderer();
-			renderer.setClearColor('grey');
-			
-			renderer.setSize(window.innerWidth, window.innerHeight);
-			document.body.appendChild(renderer.domElement);
-
-			//Geometries
-			var geoPlane = new THREE.PlaneBufferGeometry(2000, 2000, 200, 200);
-			var geoSphere = new THREE.SphereGeometry(10, 32, 32);
-			var geoSkybox = new THREE.BoxGeometry(5000, 5000, 5000);
-			
-			//Instances of grass
-			var nGrass = 200000;
-			var offsets = new Float32Array(nGrass*3);
-			var rotations = new Float32Array(nGrass);
-			for(i = 0; i < nGrass; ++i){
-				//Distribute the blades of grass "evenly" across the plane
-				offsets[i*3] = Math.random() * 2000 - 1000;
-				offsets[i*3+1] = 5;
-				offsets[i*3+2] = Math.random() * 2000 - 1000;
-				rotations[i] = Math.random() * 2 * Math.PI;
-			}
-			
+			//Grass
 			//Build vertices on shape of grass
 			var vertices = new Float32Array( [
 				  1.0, 0.0,  0.0, //T1
@@ -88,17 +61,98 @@
 				 -0.1, 4.0,  0.0,
 				 -0.5, 5.0,  0.0,
 			] );
-
- 			//Grass
  			var singleGrass = new THREE.BufferGeometry();
  			singleGrass.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
  			var geoGrass = new THREE.InstancedBufferGeometry().copy(singleGrass);
  			geoGrass.scale(4, 2, 4);
-			geoGrass.setAttribute("grassPos", new THREE.InstancedBufferAttribute(offsets, 3, true));
-			geoGrass.setAttribute("grassRot", new THREE.InstancedBufferAttribute(rotations, 1, true));
+			createPoisson(5);
+
+			//Gui
+			var fr = 0.5;
+			var spar = 5;
+			var parameters = {
+				velocity: 0.5,
+				frequency: 0.5,
+				sparsity: 5,
+				reset: function() {reset()},
+			};
+
+			function reset(){
+				parameters.velocity = 0.5;
+				parameters.frequency = 0.5;
+				parameters.sparsity = 5;
+				uniforms.vel.value = 0.5;
+				fr = 0.5;
+				spar = 5;
+				createPoisson(spar);
+			}
+
+			var gui = new dat.GUI();
+			var landscape = gui.addFolder('Landscape');
+			var lightnings = gui.addFolder('Lightning');
+			gui.add(parameters, 'reset').name("Reset");
+			var velo = landscape.add(parameters, 'velocity').min(0.0).max(1.0).step(0.1).listen();
+			var freq = lightnings.add(parameters, 'frequency').min(0.1).max(1.0).step(0.1).listen();
+			var sparsity = landscape.add(parameters, 'sparsity').min(5).max(100).step(5).listen();
+
+			velo.onChange(function(value) {
+				uniforms.vel.value = value;
+				console.log(uniforms.vel.value);
+			});
+
+			freq.onChange(function(value) {
+				fr = value;
+				console.log(fr);
+			});
+
+			sparsity.onChange(function(value) {
+				spar = value;
+				console.log(spar);
+				createPoisson(spar);
+			});
+			
+			//Scene + Camera
+			var scene = new THREE.Scene();
+			var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 10000);
+
+			//Renderer
+			var renderer = new THREE.WebGLRenderer();
+			renderer.setClearColor('grey');
+			
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			document.body.appendChild(renderer.domElement);
+
+			//Geometries
+			var geoPlane = new THREE.PlaneBufferGeometry(2000, 2000, 200, 200);
+
+			var offsets;
+			var rotations;
+
+			//Sample poisson points and copy to instanced buffer attributes
+			function createPoisson(radius){
+				let k = 30;
+				let n = 2;
+				var poissonPoints = new PoissonDisc(2000, 2000, radius, k, n);
+				poissonPoints.run();
+				var nGrass = poissonPoints.points.length;
+				//Copy poisson points to float32array
+				offsets = new Float32Array(3*nGrass);
+				rotations = new Float32Array(nGrass);
+
+				for(i = 0; i < nGrass; ++i){
+					//Distribute the blades of grass "evenly" across the plane
+					offsets[i*3] = poissonPoints.points[i].px - 1000;
+					offsets[i*3+1] = 5;
+					offsets[i*3+2] = poissonPoints.points[i].py - 1000;
+					rotations[i] = Math.random() * 2 * Math.PI;
+				}
+				console.log(nGrass);
+				geoGrass.setAttribute("grassPos", new THREE.InstancedBufferAttribute(offsets, 3, true));
+				geoGrass.setAttribute("grassRot", new THREE.InstancedBufferAttribute(rotations, 1, true));
+			}
 			
 			//Fog
-			scene.fog = new THREE.Fog('grey', 100, 1000);
+			scene.fog = new THREE.Fog('grey', 700, 1000);
 			
 			//Materials
 			var uniforms = THREE.UniformsUtils.merge([
@@ -182,7 +236,6 @@
 				for(i = 0; i < arr.length; ++i){
 					lightningGeo.vertices.push(arr[i]);
 				}
-				//return new THREE.LineSegments(lightningGeo, lightningMat);
 				return lightningGeo;
 			}
 			
@@ -197,14 +250,9 @@
 			var plane = new THREE.Mesh(geoPlane, shaderMat);
 			plane.rotation.x -= Math.PI/2;
 			scene.add(plane);
-			
-			//Sphere
-			var sphere = new THREE.Mesh(geoSphere, sphereMat);
-			sphere.position.set(0.0, 500.0, 0.0);
-			scene.add(sphere);
 
 			//Lights
-			var light = new THREE.PointLight('yellow', 0.2, 20);
+			var light = new THREE.PointLight('yellow', 0.1, 200);
 			light.position.set(0.0, 500.0, 0.0);
 			scene.add(light);
 
@@ -217,37 +265,6 @@
 			camera.position.set(0, 300, 500);
 			controls.update();
 
-			var fr = 0.5;
-			var parameters = {
-				velocity: 0.5,
-				frequency: 0.5,
-				reset: function() {reset()},
-			};
-
-			function reset(){
-				parameters.velocity = 0.5;
-				parameters.frequency = 0.5;
-				uniforms.vel.value = 0.5;
-				fr = 0.5;
-			}
-
-			var gui = new dat.GUI();
-			var options = gui.addFolder('Options');
-			gui.add(parameters, 'reset').name("Reset");
-			var velo = options.add(parameters, 'velocity').min(0.0).max(1.0).step(0.1).listen();
-			var freq = options.add(parameters, 'frequency').min(0.1).max(1.0).step(0.1).listen();
-			options.open();
-
-			velo.onChange(function(value) {
-				uniforms.vel.value = value;
-				console.log(uniforms.vel.value);
-			});
-
-			freq.onChange(function(value) {
-				fr = value;
-				console.log(fr);
-			});
-			
 			//Used to track time for the lightning display
 			var delta = 0;
 
@@ -262,6 +279,8 @@
 			    if(uniforms.time.value % (50/fr) < 1){
 			    	uniforms.timer.value = 0;
 			    	delta = uniforms.time.value;
+
+			    	//Create new lighting with a random position on plane
 			    	lightning.geometry.dispose();
 			    	lightning.geometry = createLightning(2000 * Math.random() - 1000, 2000 * Math.random() - 1000);
 			    }
