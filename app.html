@@ -199,18 +199,22 @@
 			function createLightning(x = 0, z = 0){
 				//Create array
 				var arr = [];
+				var opacs = [];
 				var off = 100;
-				//Push first segment
+				var opacity = 1.0;
+				//Push first segment along with full opacity
 				arr.push(new THREE.Vector3(x, 600, z));
-				arr.push(new THREE.Vector3(x, 100, z));
+				arr.push(new THREE.Vector3(x, 100, z)); 
+				opacs.push(opacity); 
 				//Number of iterations
 				for(i = 0; i < 4; ++i){
 					//For each segments that existed
 					//from the beginning of the loop
-					for(n = 0; n < Math.pow(2, i); ++n){
+					for(n = 0; n < Math.pow(3, i); ++n){
 						//Get first segment and remove it
 						var start = arr.shift();
 						var end = arr.shift();
+						var currOp = opacs.shift(); opacs.shift();
 						//Find middle point
 						var mid = new THREE.Vector3((start.x + end.x)/ 2, (start.y + end.y)/ 2, (start.z + end.z)/ 2);
 						//Offset middle point
@@ -218,24 +222,31 @@
 						offVec.multiplyScalar(off);
 						mid.add(offVec);
 						//Add split
-						var split = new THREE.Vector3();
-						split.subVectors(mid, start);
-						split.multiplyScalar(0.4);
-						split.add(mid);
+						var fork = new THREE.Vector3();
+						fork.subVectors(mid, start);
+						fork.multiplyScalar(0.5);
+						fork.add(mid);
 
-						//Add new segments
-						arr.push(start); arr.push(mid);
-						arr.push(mid); arr.push(end);
-						arr.push(mid); arr.push(split);
+						//Add new segments and opacities
+						arr.push(start); arr.push(mid); opacs.push(currOp); opacs.push(currOp);
+						arr.push(mid); arr.push(end); opacs.push(currOp); opacs.push(currOp);
+						//The forked lighting bolt is less opaque
+						arr.push(mid); arr.push(fork);  opacs.push(currOp * 0.5); opacs.push(currOp * 0.5);
 					}
 					//Halve next offset
 					off /= 2;
 				}
 				//Copy array to geometry (OPTIMIZABLE)
-				var lightningGeo = new THREE.Geometry();
+				var lightningGeo = new THREE.BufferGeometry();
+				var positions = new Float32Array(3 * arr.length);
 				for(i = 0; i < arr.length; ++i){
-					lightningGeo.vertices.push(arr[i]);
+					positions[3 * i] = arr[i].x;
+					positions[3 * i + 1] = arr[i].y;
+					positions[3 * i + 2] = arr[i].z;
 				}
+
+				lightningGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+				lightningGeo.setAttribute('opacity', new THREE.BufferAttribute(new Float32Array(opacs), 1));
 				return lightningGeo;
 			}
 			

@@ -58,21 +58,28 @@ var vertexShaderLightning = [
 "	return 2.3 * n_xy;",
 "}",
 "",
+"attribute float opacity;",
 "uniform float time;",
+"varying float vOpacity;",
+"varying float vY;",
 "void main() {",
 "	vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0 );",
 "	gl_Position = projectionMatrix * modelViewPosition;",
+"   vOpacity = opacity;",
+"   vY = position.y;",
 "",
 "}"
 ].join("\n");
 var fragmentShaderLightning = [
 "",
+"varying float vOpacity;",
 "uniform float timer;",
+"varying float vY;",
 "void main()",
 "{",
-"   float alpha = 1.0 - 0.02 * timer;",
-"	gl_FragColor = vec4(1.0, 1.0, 1.0, alpha);",
-"",
+"   //float alpha = step(1.0, (vY / 600.0) + 0.05 * timer) * vOpacity;", //Downwards strike NEEDS WORK
+"   float alpha = clamp(1.0 - vY * 0.2 * timer / 600.0 * vOpacity, 0.0, 1.0);", //Cooler looking NEEDS WORK
+"	gl_FragColor = vec4(0.8, 0.8, 1.0, alpha);",
 "",
 "}",
 ].join("\n");
