@@ -152,8 +152,6 @@ var fragmentShaderGrass = [
 "	vec3 dkGreen = vec3(0.12, 0.38, 0.12);", //Dark green
 "	gl_FragColor.rgb = mix(dkGreen, ltGreen, pos.y/12.0);", //The closer the ground the darker the color
 "	float dist = distance(vPos, vec3(0.0, 0.0, 0.0));",
-"	//float opacity = clamp(dist/1000.0, 0.0, 1.0);",
-"	//gl_FragColor.a = opacity;",
 "", //Light contribution
 "	for(int i = 0; i < NUM_POINT_LIGHTS; i++)",
 "	{",

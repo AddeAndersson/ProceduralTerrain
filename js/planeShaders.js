@@ -76,10 +76,10 @@ var vertexShaderPlane = [
 "void main()",
 "{",
 "",
-"	mUV = uv + vec2(time * 0.002 * vel, 0.0);",
-"	float n = findNoise(mUV);",
+"	mUV = uv + vec2(time * 0.002 * vel, 0.0);", //Move UV to make the hills seem to move
+"	float n = findNoise(mUV);", //Noise level
 "",
-"	vec3 dispPos =  vec3(position + normal * n);",
+"	vec3 dispPos =  vec3(position + normal * n);", //Displacement along normal
 "   pos = dispPos;",
 "	vec4 modelViewPosition = modelViewMatrix * vec4(dispPos, 1.0);",
 "	vPos = modelViewPosition.xyz;",

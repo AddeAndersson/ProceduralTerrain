@@ -59,14 +59,17 @@ var vertexShaderLightning = [
 "}",
 "",
 "attribute float opacity;",
+"uniform float vel;",
 "uniform float time;",
 "varying float vOpacity;",
 "varying float vY;",
 "void main() {",
-"	vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0 );",
+"	float cTime = mod(vel * 2.0 * time, 1000.0);", //cTime will keep the lightning from being translated off the plane
+"   vec3 pos = position - vec3(vel * 2.0 * cTime, 0.0, 0.0);", //translate lightning with plane, same as with grass
+"	vec4 modelViewPosition = modelViewMatrix * vec4(pos, 1.0 );",
 "	gl_Position = projectionMatrix * modelViewPosition;",
 "   vOpacity = opacity;",
-"   vY = position.y;",
+"   vY = pos.y;",
 "",
 "}"
 ].join("\n");
@@ -77,7 +80,7 @@ var fragmentShaderLightning = [
 "varying float vY;",
 "void main()",
 "{",
-"   //float alpha = step(1.0, (vY / 600.0) + 0.05 * timer) * vOpacity;", //Downwards strike NEEDS WORK
+"   //float alpha = step(1.0, (vY / 600.0) + 0.05 * timer) * vOpacity;", //Change alpha based on y coord and opacity
 "   float alpha = clamp(1.0 - vY * 0.2 * timer / 600.0 * vOpacity, 0.0, 1.0);", //Cooler looking NEEDS WORK
 "	gl_FragColor = vec4(0.8, 0.8, 1.0, alpha);",
 "",
