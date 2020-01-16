@@ -85,6 +85,7 @@
 				fr = 0.5;
 				spar = 5;
 				createPoisson(spar);
+				console.log('Parameters reset')
 			}
 
 			//User interface
@@ -98,17 +99,17 @@
 
 			velo.onChange(function(value) {
 				uniforms.vel.value = value;
-				console.log(uniforms.vel.value);
+				console.log('Velocity changed to: ', uniforms.vel.value);
 			});
 
 			freq.onChange(function(value) {
 				fr = value;
-				console.log(fr);
+				console.log('Frequency changed to: ', fr);
 			});
 
 			sparsity.onChange(function(value) {
 				spar = value;
-				console.log(spar);
+				console.log('Sparsity changed to: ', spar);
 				createPoisson(spar);
 			});
 			
@@ -149,7 +150,7 @@
 					offsets[i*3+2] = poissonPoints.points[i].py - 1000;
 					rotations[i] = Math.random() * 2 * Math.PI;
 				}
-				console.log(nGrass);
+				console.log('Number of grass instances being drawn: ', nGrass);
 				geoGrass.setAttribute("grassPos", new THREE.InstancedBufferAttribute(offsets, 3, true));
 				geoGrass.setAttribute("grassRot", new THREE.InstancedBufferAttribute(rotations, 1, true));
 			}
