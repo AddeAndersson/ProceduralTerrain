@@ -80,8 +80,8 @@ var fragmentShaderLightning = [
 "varying float vY;",
 "void main()",
 "{",
-"   //float alpha = step(1.0, (vY / 600.0) + 0.05 * timer) * vOpacity;", //Change alpha based on y coord and opacity
-"   float alpha = clamp(1.0 - vY * 0.2 * timer / 600.0 * vOpacity, 0.0, 1.0);", //Cooler looking NEEDS WORK
+"   float alpha = clamp(1.0 - ((vY - 100.0) / 500.0) - timer / 50.0, 0.0, 1.0);", //Change alpha based on y coord and opacity
+"   //float alpha = clamp(1.0 - vY * 0.2 * timer / 600.0 * vOpacity, 0.0, 1.0);", //Cooler looking NEEDS WORK
 "	gl_FragColor = vec4(0.8, 0.8, 1.0, alpha);",
 "",
 "}",

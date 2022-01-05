@@ -65,7 +65,7 @@
  			singleGrass.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
  			var geoGrass = new THREE.InstancedBufferGeometry().copy(singleGrass);
  			geoGrass.scale(4, 2, 4);
-			createPoisson(5);
+			createPoisson(50);
 
 			//Gui
 			var fr = 0.5;
@@ -73,7 +73,7 @@
 			var parameters = {
 				velocity: 0.5,
 				frequency: 0.5,
-				sparsity: 5,
+				sparsity: 50,
 				reset: function() {reset()},
 			};
 
@@ -83,7 +83,7 @@
 				parameters.sparsity = 5;
 				uniforms.vel.value = 0.5;
 				fr = 0.5;
-				spar = 5;
+				spar = 50;
 				createPoisson(spar);
 				console.log('Parameters reset')
 			}
@@ -117,11 +117,11 @@
 			var scene = new THREE.Scene();
 			var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 10000);
 			//Set camera position
-			camera.position.set(0, 300, 500);
+			camera.position.set(1700, 500, 0);
 
 			//Renderer
 			var renderer = new THREE.WebGLRenderer();
-			renderer.setClearColor('grey');
+			renderer.setClearColor('black');
 			
 			renderer.setSize(window.innerWidth, window.innerHeight);
 			document.body.appendChild(renderer.domElement);
@@ -151,12 +151,13 @@
 					rotations[i] = Math.random() * 2 * Math.PI;
 				}
 				console.log('Number of grass instances being drawn: ', nGrass);
+				geoGrass.maxInstancedCount = nGrass;
 				geoGrass.setAttribute("grassPos", new THREE.InstancedBufferAttribute(offsets, 3, true));
 				geoGrass.setAttribute("grassRot", new THREE.InstancedBufferAttribute(rotations, 1, true));
 			}
 			
 			//Fog
-			scene.fog = new THREE.Fog('grey', 700, 1000);
+			//scene.fog = new THREE.Fog('grey', 700, 1000);
 			
 			//Materials
 			var uniforms = THREE.UniformsUtils.merge([
@@ -166,9 +167,9 @@
 					time:    { type: "f", value: 1.0 },
 					timer:   { type: "f", value: 0.0 },
 					vel:     { type: "f", value: 0.5 },
-					fogColor:{ type: "c", value: scene.fog.color },
-				    fogNear: { type: "f", value: scene.fog.near },
-				    fogFar:  { type: "f", value: scene.fog.far },
+					//fogColor:{ type: "c", value: scene.fog.color },
+				    //fogNear: { type: "f", value: scene.fog.near },
+				    //fogFar:  { type: "f", value: scene.fog.far },
 				}
 			]);
 
@@ -234,7 +235,7 @@
 						//Add new segments and opacities
 						arr.push(start); arr.push(mid); opacs.push(currOp); opacs.push(currOp);
 						arr.push(mid); arr.push(end); opacs.push(currOp); opacs.push(currOp);
-						//The forked lighting bolt is less opaque
+						//The forked lightning bolt is less opaque
 						arr.push(mid); arr.push(fork);  opacs.push(currOp * 0.5); opacs.push(currOp * 0.5);
 					}
 					//Halve next offset
@@ -259,11 +260,13 @@
 
 			//Grass
 			var grass = new THREE.Mesh(geoGrass, grassMat);
+			grass.renderOrder = -1;
 			scene.add(grass);
 
 			//Plane
 			var plane = new THREE.Mesh(geoPlane, shaderMat);
 			plane.rotation.x -= Math.PI/2;
+			plane.renderOrder = -2;
 			scene.add(plane);
 
 			//Lights
@@ -279,23 +282,33 @@
 
 			//Used to track time for the lightning strike
 			var delta = 0;
-
+			var lightningLight = new THREE.PointLight( 0xffffff, 1, 1 );
+			var lightTimer = 0;
+			
 			//Rendering loop
 			var animate = function () {
 				var elapsedMilliseconds = Date.now() - startTime;
 			    var elapsedSeconds = elapsedMilliseconds / 1000.0;
-			    uniforms.time.value = 60.0 * elapsedSeconds;
+			    uniforms.time.value = 60 * elapsedSeconds;
 			    uniforms.timer.value = uniforms.time.value - delta;
-			    
+				
 			    //Bring the thunder
-			    if(uniforms.time.value % (50/fr) < 1){
+			    if(uniforms.timer.value > (120/fr)){
 			    	uniforms.timer.value = 0;
 			    	delta = uniforms.time.value;
 
 			    	//Create new lighting with a random position on plane
 			    	lightning.geometry.dispose();
-			    	lightning.geometry = createLightning(2000 * Math.random() - 1000, 2000 * Math.random() - 1000);
+					var x = 2000 * Math.random() - 1000;
+					var z = 2000 * Math.random() - 1000;
+					
+					lightningLight.position.set( x, 300, z );
+					scene.add( lightningLight );
+			    	lightning.geometry = createLightning(x, z);
 			    }
+				if(uniforms.timer.value > 0.15) {
+					scene.remove( lightningLight );
+				}
 
 				requestAnimationFrame(animate);
 				//controls.update();
